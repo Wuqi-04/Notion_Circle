@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Notion 考研进度环</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            display: flex; justify-content: center; align-items: center; 
+            min-height: 300px; width: 300px;
+            background: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        .progress-circle { position: relative; width: 280px; height: 280px; }
+        .ring { 
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%; 
+        }
+        .ring.total { width: 120px; height: 120px; --color: #ff6b6b; --width: 10px; }
+        .ring.math { width: 160px; height: 160px; --color: #4ecdc4; --width: 10px; }
+        .ring.professional { width: 200px; height: 200px; --width: 10px; --color: #45b7d1; }
+        .ring.english { width: 240px; height: 240px; --width: 10px; --color: #96ceb4; }
+        .ring.politics { width: 280px; height: 280px; --width: 10px; --color: #ffcc5c; }
+        .ring::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 50%;
+            padding: var(--width);
+            background: conic-gradient(
+                from 0deg,
+                var(--color) 0%, var(--color) var(--progress), 
+                #eaeaea var(--progress), #eaeaea 100%
+            );
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+        .center-text {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #37352f;
+        }
+        .percent { font-size: 28px; font-weight: 700; }
+        .label { font-size: 14px; margin-top: 4px; opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="progress-circle">
+        <div class="ring total" id="totalRing"></div>
+        <div class="ring math" id="mathRing"></div>
+        <div class="ring professional" id="professionalRing"></div>
+        <div class="ring english" id="englishRing"></div>
+        <div class="ring politics" id="politicsRing"></div>
+        <div class="center-text">
+            <div class="percent" id="totalPercent">0%</div>
+            <div class="label" id="totalLabel">考研进度</div>
+        </div>
+    </div>
+
+    <script>
+        // 演示进度（不连 Notion 也能看效果）
+        let progressData = {
+            考研进度: 45,
+            数学进度: 60,
+            专业课进度: 30,
+            英语进度: 50,
+            政治进度: 25
+        };
+
+        function updateProgress() {
+            totalRing.style.setProperty('--progress', progressData.考研进度 + '%');
+            mathRing.style.setProperty('--progress', progressData.数学进度 + '%');
+            professionalRing.style.setProperty('--progress', progressData.专业课进度 + '%');
+            englishRing.style.setProperty('--progress', progressData.英语进度 + '%');
+            politicsRing.style.setProperty('--progress', progressData.政治进度 + '%');
+            totalPercent.textContent = progressData.考研进度 + '%';
+        }
+
+        // 自动读取 Notion 数据库
+        async function fetchProgressFromNotion() {
+            const NOTION_API_TOKEN = "你的Notion内部集成令牌";
+            const DATABASE_ID = "你的考研数据库ID";
+
+            try {
+                const res = await fetch("https://api.notion.com/v1/databases/" + DATABASE_ID + "/query", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": "Bearer " + NOTION_API_TOKEN,
+                        "Notion-Version": "2022-06-28",
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        sorts: [{ timestamp: "created_time", direction: "descending" }],
+                        page_size: 1
+                    })
+                });
+
+                const data = await res.json();
+                if (!data.results.length) return;
+                const p = data.results[0].properties;
+
+                progressData = {
+                    考研进度: p.考研进度?.number || 0,
+                    数学进度: p.数学进度?.number || 0,
+                    专业课进度: p.专业课进度?.number || 0,
+                    英语进度: p.英语进度?.number || 0,
+                    政治进度: p.政治进度?.number || 0
+                };
+
+                updateProgress();
+            } catch (e) {}
+        }
+
+        // 初始化
+        updateProgress();
+        fetchProgressFromNotion();
+        setInterval(fetchProgressFromNotion, 60000);
+    </script>
+</body>
+</html>
